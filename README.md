@@ -1,7 +1,7 @@
 # GitHub MCP Server — Java / Spring AI
 
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.3-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Spring AI](https://img.shields.io/badge/Spring%20AI-1.0.0--M6-6DB33F?style=flat&logo=spring&logoColor=white)](https://spring.io/projects/spring-ai)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.3-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Spring AI](https://img.shields.io/badge/Spring%20AI-2.0.0--M3-6DB33F?style=flat&logo=spring&logoColor=white)](https://spring.io/projects/spring-ai)
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Lombok](https://img.shields.io/badge/Lombok-red?style=flat&logo=lombok&logoColor=white)](https://projectlombok.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT)
