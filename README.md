@@ -1,220 +1,280 @@
-# GitHub MCP Server - Java Implementation
+# GitHub MCP Server — Java / Spring AI
 
-A Java implementation of the GitHub MCP (Model Context Protocol) Server using Spring AI. This server provides MCP-compatible tools for interacting with the GitHub API.
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.3-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Spring AI](https://img.shields.io/badge/Spring%20AI-1.0.0--M6-6DB33F?style=flat&logo=spring&logoColor=white)](https://spring.io/projects/spring-ai)
+[![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)
+[![Lombok](https://img.shields.io/badge/Lombok-red?style=flat&logo=lombok&logoColor=white)](https://projectlombok.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT)
 
-## Features
+A production-ready MCP server that connects any MCP-compatible AI agent to the GitHub API.
+Manage repositories, issues, pull requests, and search — all through natural language.
 
-This Java implementation provides the following GitHub MCP tools:
+> **Transport:** HTTP/SSE on port 8080, compatible with Cursor and Claude Desktop out of the box.
 
-### Repository Operations
-- `create_repository` - Create a new repository
-- `fork_repository` - Fork a repository
-- `get_repository` - Get repository details
-- `list_commits` - List commits
-- `get_commit` - Get commit details
-- `get_file_contents` - Get file contents
-- `create_or_update_file` - Create or update a file
-- `delete_file` - Delete a file
-- `create_branch` - Create a branch
-- `list_branches` - List branches
-- `merge_branch` - Merge branches
+---
 
-### Issue Operations
-- `create_issue` - Create an issue
-- `update_issue` - Update an issue
-- `add_issue_comment` - Add comment to issue
-- `list_issues` - List issues
-- `get_issue` - Get issue details
-- `close_issue` - Close an issue
-- `reopen_issue` - Reopen an issue
-- `assign_issue` - Assign issue to users
-- `unassign_issue` - Unassign issue
-- `add_issue_labels` - Add labels to issue
-- `remove_issue_label` - Remove label from issue
+## Why this server?
 
-### Pull Request Operations
-- `create_pull_request` - Create a PR
-- `update_pull_request` - Update a PR
-- `list_pull_requests` - List PRs
-- `get_pull_request` - Get PR details
-- `merge_pull_request` - Merge a PR
-- `close_pull_request` - Close a PR
-- `reopen_pull_request` - Reopen a PR
-- `add_pull_request_comment` - Add PR comment
-- `create_pull_request_review` - Create PR review
-- `submit_pull_request_review` - Submit PR review
+| Capability | This server | GitHub REST API |
+|---|---|---|
+| Repository management | ✅ | ✅ |
+| Issue & PR operations | ✅ | ✅ |
+| Branch & commit control | ✅ | ✅ |
+| Code & user search | ✅ | ✅ |
+| Natural language interface | ✅ | ❌ |
+| MCP protocol (SSE) | ✅ | ❌ |
+| Java / Spring AI | ✅ | ❌ |
+| GitHub Enterprise support | ✅ | ✅ |
 
-### Search Operations
-- `search_code` - Search code
-- `search_issues` - Search issues
-- `search_repositories` - Search repositories
-- `search_users` - Search users
+---
 
-### User Operations
-- `get_authenticated_user` - Get authenticated user info
-- `get_user` - Get user info
-- `list_user_repositories` - List user repositories
+## Tools (38 total)
 
-## Prerequisites
+| Category | Count | Tools |
+|---|---|---|
+| Repository | 11 | `create_repository`, `fork_repository`, `get_repository`, `list_commits`, `get_commit`, `get_file_contents`, `create_or_update_file`, `delete_file`, `create_branch`, `list_branches`, `merge_branch` |
+| Issues | 11 | `create_issue`, `update_issue`, `add_issue_comment`, `list_issues`, `get_issue`, `close_issue`, `reopen_issue`, `assign_issue`, `unassign_issue`, `add_issue_labels`, `remove_issue_label` |
+| Pull Requests | 10 | `create_pull_request`, `update_pull_request`, `list_pull_requests`, `get_pull_request`, `merge_pull_request`, `close_pull_request`, `reopen_pull_request`, `add_pull_request_comment`, `create_pull_request_review`, `submit_pull_request_review` |
+| Search | 4 | `search_code`, `search_issues`, `search_repositories`, `search_users` |
+| Users | 3 | `get_authenticated_user`, `get_user`, `list_user_repositories` |
 
-- Java 17 or higher
-- Maven 3.8+
-- GitHub Personal Access Token
+---
+
+## Quick start
+
+```bash
+# 1. Build
+mvn clean package
+
+# 2. Set credentials
+export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...
+
+# 3. Run (SSE transport — port 8080)
+java -jar target/github-mcp-server-1.0.0.jar
+
+# 4. Verify
+curl http://localhost:8080/health
+
+# 5. Inspect all tools
+npx @modelcontextprotocol/inspector http://localhost:8080/sse
+```
+
+Get your token from [GitHub Settings](https://github.com/settings/tokens) → Developer settings → Personal access tokens.
+For GitHub Enterprise, set `GITHUB_HOST` to your instance URL.
+
+---
+
+## Architecture
+
+```
+MCP Client (Cursor / Claude Desktop / other)
+    │   HTTP/SSE transport (/sse + /mcp/message)
+    ▼
+Tool class  (@McpTool — thin delegation layer, validates required params)
+    ▼
+Service interface + impl  (business logic, error mapping, pagination)
+    ▼
+GitHubRestClient  (typed HTTP gateway, PAT auth, exception handling)
+    ▼
+GitHub REST API
+```
+
+The architecture is strictly layered:
+
+- `client/` — GitHub integration boundary (HTTP, Bearer-Auth, error handling)
+- `service/` — domain logic (filtering, mapping, pagination)
+- `tools/` — MCP-facing surface (descriptions, param validation, delegation)
+- Spring Boot — runtime and transport wrapper only
+
+Every tool returns a consistent `ApiResponse<T>` envelope:
+
+```json
+{ "success": true,  "data": { ... } }
+{ "success": false, "errorCode": "REPO_NOT_FOUND", "errorMessage": "..." }
+```
+
+---
 
 ## Configuration
 
-### Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub Personal Access Token | Yes |
-| `GITHUB_HOST` | GitHub hostname (for GitHub Enterprise) | No |
-| `GITHUB_READ_ONLY` | Enable read-only mode | No |
-| `GITHUB_TOOLSETS` | Comma-separated list of toolsets to enable | No |
-| `GITHUB_TOOLS` | Comma-separated list of specific tools to enable | No |
-| `GITHUB_EXCLUDE_TOOLS` | Comma-separated list of tools to exclude | No |
+| Property | Env var | Required | Default | Description |
+|---|---|---|---|---|
+| — | `GITHUB_PERSONAL_ACCESS_TOKEN` | ✅ | — | GitHub Personal Access Token |
+| — | `GITHUB_HOST` | ❌ | `github.com` | GitHub hostname (for GitHub Enterprise) |
+| — | `GITHUB_READ_ONLY` | ❌ | `false` | Restrict to read-only operations |
+| — | `GITHUB_TOOLSETS` | ❌ | all | Comma-separated list of toolsets to enable |
+| — | `GITHUB_TOOLS` | ❌ | all | Comma-separated list of specific tools to enable |
+| — | `GITHUB_EXCLUDE_TOOLS` | ❌ | none | Comma-separated list of tools to exclude |
 
 ### Creating a GitHub Personal Access Token
 
-1. Go to GitHub Settings → Developer settings → Personal access tokens
-2. Click "Generate new token (classic)"
+1. Go to **GitHub Settings → Developer settings → Personal access tokens**
+2. Click **"Generate new token (classic)"**
 3. Select the following scopes:
-   - `repo` - Full control of private repositories
-   - `workflow` - Update GitHub Action workflows
-   - `read:org` - Read org and team membership
-   - `gist` - Create gists
-   - `notifications` - Access notifications
-   - `read:user` - Read user profile data
+    - `repo` — Full control of private repositories
+    - `workflow` — Update GitHub Action workflows
+    - `read:org` — Read org and team membership
+    - `gist` — Create gists
+    - `notifications` — Access notifications
+    - `read:user` — Read user profile data
 4. Generate and copy the token
 
-## Building
+---
 
-```bash
-mvn clean package
-```
+## Client config
 
-## Running
-
-### Using Maven
-
-```bash
-export GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here
-mvn spring-boot:run
-```
-
-### Using JAR
-
-```bash
-export GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here
-java -jar target/github-mcp-server-1.0.0.jar
-```
-
-## Docker
-
-### Build Docker Image
-
-```bash
-docker build -t github-mcp-server .
-```
-
-### Run Docker Container
-
-```bash
-docker run -p 8080:8080 -e GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here github-mcp-server
-```
-
-## MCP Client Configuration
-
-### Claude Desktop
-
-Add to your `claude_desktop_config.json`:
+### Cursor (`.cursor/mcp.json`)
 
 ```json
 {
   "mcpServers": {
     "github": {
+      "url": "http://localhost:8080/sse"
+    }
+  }
+}
+```
+
+### Claude Desktop (`claude_desktop_config.json`)
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "url": "http://localhost:8080/sse"
+    }
+  }
+}
+```
+
+On macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+### VS Code / GitHub Copilot
+
+**URL mode** (if your client supports it):
+
+```json
+{
+  "github.copilot.chat.mcp.servers": {
+    "github": {
+      "url": "http://localhost:8080/sse"
+    }
+  }
+}
+```
+
+**Command mode** (stdio-only clients):
+
+```json
+{
+  "github.copilot.chat.mcp.servers": {
+    "github": {
       "command": "java",
-      "args": [
-        "-jar",
-        "/path/to/github-mcp-server-1.0.0.jar"
-      ],
+      "args": ["-jar", "/path/to/github-mcp-server-1.0.0.jar"],
       "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_token_here"
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
       }
     }
   }
 }
 ```
 
-### HTTP Transport
+---
 
-The server also supports HTTP transport on port 8080:
+## Docker
 
-```json
-{
-  "mcpServers": {
-    "github": {
-      "url": "http://localhost:8080/mcp"
-    }
-  }
-}
+```bash
+# Build image
+docker build -t github-mcp-server:latest .
+
+# Run
+docker run --rm -p 8080:8080 \
+  -e GITHUB_PERSONAL_ACCESS_TOKEN=ghp_... \
+  github-mcp-server:latest
 ```
 
-## API Endpoints
+If GitHub Enterprise runs in Docker on the same host, use `host.docker.internal`:
 
-- `GET /health` - Health check endpoint
-- `POST /mcp` - MCP protocol endpoint
+```bash
+-e GITHUB_HOST=http://host.docker.internal:3000
+```
 
-## Project Structure
+---
+
+## Running tests
+
+```bash
+mvn test
+```
+
+---
+
+## Package structure
 
 ```
-com.github.mcp/
-├── GithubMcpApplication.java          # Main Spring Boot application
-├── client/
-│   ├── GitHubRestClient.java          # REST API client
-│   └── GitHubGraphqlClient.java       # GraphQL client
+com.github.mcp
+├── GithubMcpApplication.java              @SpringBootApplication
 ├── config/
-│   ├── GitHubProperties.java          # Configuration properties
-│   └── WebConfig.java                 # Web configuration
+│   ├── GitHubProperties.java              @ConfigurationProperties — token, host, readOnly, toolsets
+│   └── WebConfig.java                     Web configuration
+├── client/
+│   ├── GitHubRestClient.java              GET/POST/PATCH/DELETE HTTP gateway; typed exceptions
+│   └── GitHubGraphqlClient.java           GraphQL client
 ├── controller/
-│   └── HealthController.java          # Health check endpoint
-├── dto/
-│   ├── common/
-│   │   ├── ApiResponse.java           # Generic API response wrapper
-│   │   └── PagedResponse.java         # Paginated response wrapper
-│   ├── request/                       # Request DTOs
-│   └── response/                      # Response DTOs
+│   └── HealthController.java              Health check endpoint (GET /health)
 ├── exception/
-│   ├── GitHubMcpException.java        # Base exception
-│   └── GlobalExceptionHandler.java    # Global error handler
-├── service/
-│   ├── interfaces/                    # Service interfaces
-│   └── impl/                          # Service implementations
+│   ├── GitHubMcpException.java            Base exception
+│   └── GlobalExceptionHandler.java        Global error handler
+├── dto/
+│   ├── common/   ApiResponse · PagedResponse
+│   ├── request/  *Request DTOs
+│   └── response/ *Response DTOs
+├── service/      Interfaces + impl — business logic, error mapping, pagination
 └── tools/
-    ├── RepositoryTools.java           # Repository operations
-    ├── IssueTools.java                # Issue operations
-    ├── PullRequestTools.java          # PR operations
-    ├── SearchTools.java               # Search operations
-    └── UserTools.java                 # User operations
+    ├── RepositoryTools.java   (11 tools)
+    ├── IssueTools.java        (11 tools)
+    ├── PullRequestTools.java  (10 tools)
+    ├── SearchTools.java       (4 tools)
+    └── UserTools.java         (3 tools)
 ```
 
-## Technology Stack
+---
 
-- Java 21
-- Spring Boot 3.4.3
-- Spring AI 1.0.0-M6 (MCP Server)
-- Maven
-- Lombok
-- Jackson
+## Troubleshooting
 
-## License
+### `401 Unauthorized`
 
-MIT License - See LICENSE file for details
+Token issue. Check:
 
-## Contributing
+1. `GITHUB_PERSONAL_ACCESS_TOKEN` is set correctly
+2. The token has not expired
+3. The token has the required scopes (see [Configuration](#configuration))
+4. For GitHub Enterprise: confirm `GITHUB_HOST` is set to your instance URL
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+### `REPO_NOT_FOUND` / `404 Not Found`
+
+The repository may be private and the token lacks `repo` scope, or the owner/name is incorrect.
+
+### Connection timeouts
+
+The server connects to `api.github.com` (or your `GITHUB_HOST`). Ensure the JVM process has outbound network access.
+
+### Copilot / Claude can't see the server
+
+1. Confirm the server is running: `curl http://localhost:8080/health`
+2. Confirm the MCP SSE endpoint is alive: `curl http://localhost:8080/sse`
+3. Check that the URL in the client config points to `http://localhost:8080/sse`
+
+---
 
 ## Acknowledgments
 
-This project is a Java port of the official [GitHub MCP Server](https://github.com/github/github-mcp-server) written in Go.
+This project is a Java / Spring AI port of the official [GitHub MCP Server](https://github.com/github/github-mcp-server) written in Go.
+
+---
+
+## License
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT)
+
+MIT License — see [LICENSE](LICENSE) for details.
